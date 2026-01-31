@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sticky Liquid Glass</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&display=swap');
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Space Grotesk', sans-serif;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Navigation Tabs */
+        .nav-container {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 4px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-btn {
+            padding: 8px 20px;
+            border-radius: 100px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Shapes Selector Sub-menu */
+        #shape-selector {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 90;
+            display: none;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 15px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .shape-opt {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: 20px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .shape-opt.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .ui-label {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            color: rgba(255,255,255,0.2);
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-container">
+        <div id="tab-glass" class="nav-btn active" onclick="switchTab('glass')">Glass</div>
+        <div id="tab-icons" class="nav-btn" onclick="switchTab('icons')">Icons</div>
+        <div id="tab-shapes" class="nav-btn" onclick="switchTab('shapes')">Shapes</div>
+    </div>
+
+    <div id="shape-selector">
+        <div id="opt-oval" class="shape-opt active" onclick="setLensShape('oval')">Oval</div>
+        <div id="opt-circle" class="shape-opt" onclick="setLensShape('circle')">Circle</div>
+        <div id="opt-square" class="shape-opt" onclick="setLensShape('square')">Square</div>
+        <div id="opt-diamond" class="shape-opt" onclick="setLensShape('diamond')">Diamond</div>
+    </div>
+
+    <div class="ui-label">Drag the lens to explore // Swipe for ripples</div>
+
+    <div id="canvas-container">
+        <canvas id="glassCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('glassCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        
+        let width, height;
+        let activeTab = 'glass';
+        let currentShape = 'oval'; 
+
+        let lens = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            targetY: 0,
+            baseRadiusX: 175,
+            baseRadiusY: 115,
+            radiusX: 175,
+            radiusY: 115,
+            isDragging: false,
+            velX: 0,
+            velY: 0,
+            wobbleX: 0,
+            wobbleY: 0,
+            refraction: 0.45,       
+            edgeDistortion: 3.5,   
+            chromatic: 1.5         
+        };
+
+        let ripples = [];
+        let lastRipplePos = { x: 0, y: 0 };
+        const words = ["LIQUID", "STRETCH", "GLASS"];
+        
+        const appIcons = [
+            { char: '✉', bg: ['#1e90ff', '#00bfff'], label: 'Mail' },
+            { char: '♫', bg: ['#ff4b2b', '#ff416c'], label: 'Music' },
+            { char: '⚙', bg: ['#bdc3c7', '#2c3e50'], label: 'Settings' },
+            { char: '📷', bg: ['#3d3d3d', '#1a1a1a'], label: 'Camera' },
+            { char: '★', bg: ['#fbc531', '#e1b12c'], label: 'Faves' },
+            { char: '☀', bg: ['#ff9966', '#ff5e62'], label: 'Weather' },
+            { char: '💬', bg: ['#56ab2f', '#a8e063'], label: 'Chat' },
+            { char: '🗺', bg: ['#00c6ff', '#0072ff'], label: 'Maps' },
+            { char: '📅', bg: ['#ffffff', '#f0f0f0'], label: 'Calendar' }
+        ];
+
+        function init() {
+            resize();
+            lens.x = lens.targetX = width / 2;
+            lens.y = lens.targetY = height / 2;
+            animate();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            
+            const selector = document.getElementById('shape-selector');
+            selector.style.display = (tab === 'shapes') ? 'flex' : 'none';
+        }
+
+        function setLensShape(shape) {
+            currentShape = shape;
+            document.querySelectorAll('.shape-opt').forEach(opt => opt.classList.remove('active'));
+            const activeOpt = document.getElementById('opt-' + shape);
+            if (activeOpt) activeOpt.classList.add('active');
+
+            if (shape === 'circle') {
+                lens.baseRadiusX = 135;
+                lens.baseRadiusY = 135;
+            } else if (shape === 'square') {
+                lens.baseRadiusX = 130;
+                lens.baseRadiusY = 130;
+            } else if (shape === 'diamond') {
+                lens.baseRadiusX = 150;
+                lens.baseRadiusY = 150;
+            } else {
+                lens.baseRadiusX = 175;
+                lens.baseRadiusY = 115;
+            }
+        }
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            setLensShape(currentShape);
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+            ctx.lineWidth = 1;
+            const gridSize = 80;
+            for(let i = 0; i < width; i += gridSize) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
+            }
+            for(let i = 0; i < height; i += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
+            }
+
+            // Draw based on actual tab mode
+            if (activeTab === 'icons') {
+                drawIconsLayer();
+            } else {
+                // Both 'glass' and 'shapes' tabs show the text background
+                drawTextLayer();
+            }
+        }
+
+        function drawTextLayer() {
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            
+            const fontSize = Math.min(width * 0.18, 90); 
+            const lineSpacing = fontSize * 1.1;
+            ctx.font = `bold ${fontSize}px 'Space Grotesk'`;
+            
+            const totalHeight = (words.length - 1) * lineSpacing;
+            const startY = (height / 2) - (totalHeight / 2);
+
+            words.forEach((word, idx) => {
+                ctx.fillText(word, width / 2, startY + (idx * lineSpacing));
+            });
+        }
+
+        function drawRoundedRect(x, y, size, radius, colors) {
+            ctx.save();
+            const grad = ctx.createLinearGradient(x, y, x, y + size);
+            grad.addColorStop(0, colors[0]);
+            grad.addColorStop(1, colors[1]);
+            
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + size - radius, y);
+            ctx.quadraticCurveTo(x + size, y, x + size, y + radius);
+            ctx.lineTo(x + size, y + size - radius);
+            ctx.quadraticCurveTo(x + size, y + size, x + size - radius, y + size);
+            ctx.lineTo(x + radius, y + size);
+            ctx.quadraticCurveTo(x, y + size, x, y + size - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawIconsLayer() {
+            const iconSize = Math.min(width * 0.15, 70);
+            const cornerRadius = iconSize * 0.25;
+            const cols = 4;
+            const rows = 3;
+            
+            const hGap = width / (cols + 1);
+            const vGap = height / (rows + 1);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const iconIdx = r * cols + c;
+                    if (iconIdx >= appIcons.length) continue;
+
+                    const iconData = appIcons[iconIdx];
+                    const centerX = hGap * (c + 1);
+                    const centerY = vGap * (r + 1);
+                    
+                    drawRoundedRect(centerX - iconSize/2, centerY - iconSize/2, iconSize, cornerRadius, iconData.bg);
+                    
+                    ctx.fillStyle = iconData.bg[0].toLowerCase() === '#ffffff' ? '#000' : '#fff';
+                    ctx.font = `${iconSize * 0.45}px 'Arial'`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(iconData.char, centerX, centerY);
+                    
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                    ctx.font = `${iconSize * 0.15}px 'Space Grotesk'`;
+                    ctx.fillText(iconData.label, centerX, centerY + iconSize/2 + 15);
+                }
+            }
+        }
+
+        function updatePhysics() {
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                ripples[i].radius += 7;
+                ripples[i].life -= 0.02;
+                if (ripples[i].life <= 0) ripples.splice(i, 1);
+            }
+
+            const oldX = lens.x;
+            const oldY = lens.y;
+
+            const followSpeed = lens.isDragging ? 0.2 : 0.08;
+            lens.x += (lens.targetX - lens.x) * followSpeed;
+            lens.y += (lens.targetY - lens.y) * followSpeed;
+
+            lens.velX = lens.x - oldX;
+            lens.velY = lens.y - oldY;
+
+            const spring = 0.12;  
+            const friction = 0.88; 
+
+            let targetWobbleX = lens.velX * 1.5;
+            let targetWobbleY = lens.velY * 1.5;
+
+            lens.wobbleX += (targetWobbleX - lens.wobbleX) * spring;
+            lens.wobbleY += (targetWobbleY - lens.wobbleY) * spring;
+            
+            lens.wobbleX *= friction;
+            lens.wobbleY *= friction;
+
+            lens.radiusX = lens.baseRadiusX + lens.wobbleX - Math.abs(lens.wobbleY * 0.3);
+            lens.radiusY = lens.baseRadiusY + lens.wobbleY - Math.abs(lens.wobbleX * 0.3);
+        }
+
+        function getShapeDist(dx, dy, rx, ry) {
+            if (currentShape === 'square') {
+                return Math.max(Math.abs(dx / rx), Math.abs(dy / ry));
+            } else if (currentShape === 'diamond') {
+                return Math.abs(dx / rx) + Math.abs(dy / ry);
+            } else {
+                return Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+            }
+        }
+
+        function applyRefraction() {
+            const margin = 80; 
+            const sw = Math.floor(lens.radiusX * 2 + margin * 2);
+            const sh = Math.floor(lens.radiusY * 2 + margin * 2);
+            
+            let sx = Math.floor(lens.x - lens.radiusX - margin);
+            let sy = Math.floor(lens.y - lens.radiusY - margin);
+            
+            const safeSX = Math.max(0, sx);
+            const safeSY = Math.max(0, sy);
+            const safeSW = Math.min(width - safeSX, sw);
+            const safeSH = Math.min(height - safeSY, sh);
+
+            if (safeSW <= 0 || safeSH <= 0) {
+                drawLensHardware();
+                return;
+            }
+
+            const imgData = ctx.getImageData(safeSX, safeSY, safeSW, safeSH);
+            const src = imgData.data;
+            const output = ctx.createImageData(safeSW, safeSH);
+            const out = output.data;
+
+            const offsetX = safeSX - sx;
+            const offsetY = safeSY - sy;
+            const cx = sw / 2;
+            const cy = sh / 2;
+
+            for (let y = 0; y < safeSH; y++) {
+                for (let x = 0; x < safeSW; x++) {
+                    const dx = x + offsetX - cx;
+                    const dy = y + offsetY - cy;
+                    const distScore = getShapeDist(dx, dy, lens.radiusX, lens.radiusY);
+                    
+                    const outIdx = (y * safeSW + x) * 4;
+
+                    if (distScore < 1.0) {
+                        const pullFactor = Math.pow(distScore, lens.edgeDistortion);
+                        const mag = 1.0 - (pullFactor * lens.refraction);
+
+                        let shockX = 0;
+                        let shockY = 0;
+                        ripples.forEach(r => {
+                            const rdx = (x + safeSX) - r.x;
+                            const rdy = (y + safeSY) - r.y;
+                            const dist = Math.sqrt(rdx * rdx + rdy * rdy);
+                            const diff = Math.abs(dist - r.radius);
+                            if (diff < 50) {
+                                const strength = (1 - diff / 50) * r.life * 8;
+                                const angle = Math.atan2(rdy, rdx);
+                                shockX += Math.cos(angle) * strength;
+                                shockY += Math.sin(angle) * strength;
+                            }
+                        });
+
+                        const cOff = lens.chromatic / 200;
+                        const channelOffsets = [1 + cOff, 1.0, 1 - cOff];
+                        for (let c = 0; c < 3; c++) {
+                            const smpX = Math.floor((cx + dx * mag * channelOffsets[c] + shockX) - offsetX);
+                            const smpY = Math.floor((cy + dy * mag * channelOffsets[c] + shockY) - offsetY);
+
+                            if (smpX >= 0 && smpX < safeSW && smpY >= 0 && smpY < safeSH) {
+                                out[outIdx + c] = src[(smpY * safeSW + smpX) * 4 + c];
+                            } else {
+                                out[outIdx + c] = 0; 
+                            }
+                        }
+
+                        let alpha = 255;
+                        if (distScore > 0.95) alpha = 255 * (1 - (distScore - 0.95) / 0.05);
+                        out[outIdx + 3] = alpha;
+                        
+                        const glow = Math.pow(distScore, 8) * 110;
+                        out[outIdx] = Math.min(255, out[outIdx] + glow);
+                        out[outIdx+1] = Math.min(255, out[outIdx+1] + glow);
+                        out[outIdx+2] = Math.min(255, out[outIdx+2] + glow);
+
+                    } else {
+                        const sIdx = (y * safeSW + x) * 4;
+                        out[outIdx] = src[sIdx];
+                        out[outIdx+1] = src[sIdx+1];
+                        out[outIdx+2] = src[sIdx+2];
+                        out[outIdx+3] = src[sIdx+3];
+                    }
+                }
+            }
+
+            ctx.putImageData(output, safeSX, safeSY);
+            drawLensHardware();
+        }
+
+        function drawLensHardware() {
+            ctx.save();
+            ctx.lineWidth = 2.5;
+            
+            ctx.beginPath();
+            if (currentShape === 'square') {
+                ctx.rect(lens.x - lens.radiusX, lens.y - lens.radiusY, lens.radiusX * 2, lens.radiusY * 2);
+            } else if (currentShape === 'diamond') {
+                ctx.moveTo(lens.x, lens.y - lens.radiusY);
+                ctx.lineTo(lens.x + lens.radiusX, lens.y);
+                ctx.lineTo(lens.x, lens.y + lens.radiusY);
+                ctx.lineTo(lens.x - lens.radiusX, lens.y);
+                ctx.closePath();
+            } else {
+                ctx.ellipse(lens.x, lens.y, lens.radiusX, lens.radiusY, 0, 0, Math.PI * 2);
+            }
+            
+            const edgeGrad = ctx.createRadialGradient(lens.x, lens.y, Math.min(lens.radiusX, lens.radiusY) * 0.9, lens.x, lens.y, Math.max(lens.radiusX, lens.radiusY));
+            edgeGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+            edgeGrad.addColorStop(1, "rgba(255, 255, 255, 0.2)");
+            ctx.strokeStyle = edgeGrad;
+            ctx.stroke();
+
+            const shine = ctx.createRadialGradient(
+                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, 5,
+                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, lens.radiusX * 0.6
+            );
+            shine.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+            shine.addColorStop(1, "rgba(255, 255, 255, 0)");
+            ctx.fillStyle = shine;
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function animate() {
+            updatePhysics();
+            drawBackground();
+            applyRefraction();
+            requestAnimationFrame(animate);
+        }
+
+        function spawnRipple(x, y) {
+            ripples.push({ x: x, y: y, radius: 0, life: 1.0 });
+            lastRipplePos = { x, y };
+        }
+
+        function handleStart(e) {
+            const p = getPos(e);
+            if (p.y < 130) return; 
+
+            const dx = p.x - lens.x;
+            const dy = p.y - lens.y;
+            const dist = getShapeDist(dx, dy, lens.radiusX, lens.radiusY);
+            
+            if (dist < 1.2) {
+                lens.isDragging = true;
+                lens.targetX = p.x;
+                lens.targetY = p.y;
+            } else {
+                spawnRipple(p.x, p.y);
+            }
+        }
+
+        function handleMove(e) {
+            const p = getPos(e);
+            if (lens.isDragging) {
+                lens.targetX = p.x;
+                lens.targetY = p.y;
+            } else {
+                const dist = Math.sqrt(Math.pow(p.x - lastRipplePos.x, 2) + Math.pow(p.y - lastRipplePos.y, 2));
+                if (dist > 60) {
+                    spawnRipple(p.x, p.y);
+                }
+            }
+        }
+
+        function getPos(e) {
+            const t = e.touches ? e.touches[0] : e;
+            return { x: t.clientX, y: t.clientY };
+        }
+
+        window.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', () => lens.isDragging = false);
+        window.addEventListener('touchstart', (e) => {
+            const p = getPos(e);
+            if (p.y > 130) e.preventDefault();
+            handleStart(e);
+        }, { passive: false });
+        window.addEventListener('touchmove', handleMove);
+        window.addEventListener('touchend', () => lens.isDragging = false);
+        window.addEventListener('resize', resize);
+        window.onload = init;
+    </script>
+</body>
+</html>
+

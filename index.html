@@ -11,7 +11,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #030303;
+            background-color: #050505;
             font-family: 'Space Grotesk', sans-serif;
             touch-action: none;
             user-select: none;
@@ -34,63 +34,62 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            padding: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 4px;
             border-radius: 100px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             gap: 4px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .nav-btn {
-            padding: 10px 22px;
+            padding: 8px 20px;
             border-radius: 100px;
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 11px;
-            font-weight: 700;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
         }
 
         .nav-btn.active {
-            background: rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.15);
             color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
         /* Shapes Selector Sub-menu */
         #shape-selector {
             position: fixed;
-            top: 85px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 90;
             display: none;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 6px 12px;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 15px;
             border-radius: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
         }
 
         .shape-opt {
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
             cursor: pointer;
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 20px;
-            transition: all 0.3s;
+            transition: all 0.2s;
             font-weight: 600;
-            letter-spacing: 0.05em;
         }
 
         .shape-opt.active {
             color: #fff;
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .ui-label {
@@ -99,9 +98,9 @@
             width: 100%;
             text-align: center;
             pointer-events: none;
-            color: rgba(255,255,255,0.15);
-            font-size: 9px;
-            letter-spacing: 0.3em;
+            color: rgba(255,255,255,0.2);
+            font-size: 10px;
+            letter-spacing: 0.2em;
             text-transform: uppercase;
             z-index: 10;
         }
@@ -122,7 +121,7 @@
         <div id="opt-diamond" class="shape-opt" onclick="setLensShape('diamond')">Diamond</div>
     </div>
 
-    <div class="ui-label">Interactive Optical Surface</div>
+    <div class="ui-label">Drag the lens to explore // Swipe for ripples</div>
 
     <div id="canvas-container">
         <canvas id="glassCanvas"></canvas>
@@ -150,25 +149,25 @@
             velY: 0,
             wobbleX: 0,
             wobbleY: 0,
-            refraction: 0.48,       
-            edgeDistortion: 3.8,   
-            chromatic: 2.2         
+            refraction: 0.45,       
+            edgeDistortion: 3.5,   
+            chromatic: 1.5         
         };
 
         let ripples = [];
         let lastRipplePos = { x: 0, y: 0 };
-        const words = ["STRETCH", "LIQUID", "MIND"];
+        const words = ["LIQUID", "STRETCH", "GLASS"];
         
         const appIcons = [
-            { char: '✉', bg: ['#1e90ff', '#0072ff'], label: 'Mail' },
-            { char: '♫', bg: ['#ff416c', '#ff4b2b'], label: 'Music' },
-            { char: '⚙', bg: ['#485563', '#29323c'], label: 'Settings' },
-            { char: '📷', bg: ['#3d3d3d', '#111111'], label: 'Camera' },
+            { char: '✉', bg: ['#1e90ff', '#00bfff'], label: 'Mail' },
+            { char: '♫', bg: ['#ff4b2b', '#ff416c'], label: 'Music' },
+            { char: '⚙', bg: ['#bdc3c7', '#2c3e50'], label: 'Settings' },
+            { char: '📷', bg: ['#3d3d3d', '#1a1a1a'], label: 'Camera' },
             { char: '★', bg: ['#fbc531', '#e1b12c'], label: 'Faves' },
             { char: '☀', bg: ['#ff9966', '#ff5e62'], label: 'Weather' },
-            { char: '💬', bg: ['#00b09b', '#96c93d'], label: 'Chat' },
-            { char: '🗺', bg: ['#4facfe', '#00f2fe'], label: 'Maps' },
-            { char: '📅', bg: ['#ebedee', '#fdfbfb'], label: 'Calendar' }
+            { char: '💬', bg: ['#56ab2f', '#a8e063'], label: 'Chat' },
+            { char: '🗺', bg: ['#00c6ff', '#0072ff'], label: 'Maps' },
+            { char: '📅', bg: ['#ffffff', '#f0f0f0'], label: 'Calendar' }
         ];
 
         function init() {
@@ -194,17 +193,17 @@
             if (activeOpt) activeOpt.classList.add('active');
 
             if (shape === 'circle') {
-                lens.baseRadiusX = 140;
-                lens.baseRadiusY = 140;
+                lens.baseRadiusX = 135;
+                lens.baseRadiusY = 135;
             } else if (shape === 'square') {
                 lens.baseRadiusX = 130;
                 lens.baseRadiusY = 130;
             } else if (shape === 'diamond') {
-                lens.baseRadiusX = 160;
-                lens.baseRadiusY = 160;
+                lens.baseRadiusX = 150;
+                lens.baseRadiusY = 150;
             } else {
-                lens.baseRadiusX = 180;
-                lens.baseRadiusY = 110;
+                lens.baseRadiusX = 175;
+                lens.baseRadiusY = 115;
             }
         }
 
@@ -217,14 +216,12 @@
         }
 
         function drawBackground() {
-            // Darker, more premium background
-            ctx.fillStyle = '#030303';
+            ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, width, height);
 
-            // Fine grid
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
-            ctx.lineWidth = 0.5;
-            const gridSize = 100;
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+            ctx.lineWidth = 1;
+            const gridSize = 80;
             for(let i = 0; i < width; i += gridSize) {
                 ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
             }
@@ -232,9 +229,11 @@
                 ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
             }
 
+            // Draw based on actual tab mode
             if (activeTab === 'icons') {
                 drawIconsLayer();
             } else {
+                // Both 'glass' and 'shapes' tabs show the text background
                 drawTextLayer();
             }
         }
@@ -244,15 +243,14 @@
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
             
-            const fontSize = Math.min(width * 0.16, 85); 
-            const lineSpacing = fontSize * 1.05;
-            ctx.font = `900 ${fontSize}px 'Space Grotesk'`;
+            const fontSize = Math.min(width * 0.18, 90); 
+            const lineSpacing = fontSize * 1.1;
+            ctx.font = `bold ${fontSize}px 'Space Grotesk'`;
             
             const totalHeight = (words.length - 1) * lineSpacing;
             const startY = (height / 2) - (totalHeight / 2);
 
             words.forEach((word, idx) => {
-                ctx.globalAlpha = 1.0;
                 ctx.fillText(word, width / 2, startY + (idx * lineSpacing));
             });
         }
@@ -277,17 +275,13 @@
             
             ctx.fillStyle = grad;
             ctx.fill();
-            
-            // Subtle icon shadow
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = "rgba(0,0,0,0.3)";
             ctx.restore();
         }
 
         function drawIconsLayer() {
-            const iconSize = Math.min(width * 0.16, 75);
-            const cornerRadius = iconSize * 0.28;
-            const cols = 3;
+            const iconSize = Math.min(width * 0.15, 70);
+            const cornerRadius = iconSize * 0.25;
+            const cols = 4;
             const rows = 3;
             
             const hGap = width / (cols + 1);
@@ -309,32 +303,36 @@
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
                     ctx.fillText(iconData.char, centerX, centerY);
+                    
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                    ctx.font = `${iconSize * 0.15}px 'Space Grotesk'`;
+                    ctx.fillText(iconData.label, centerX, centerY + iconSize/2 + 15);
                 }
             }
         }
 
         function updatePhysics() {
             for (let i = ripples.length - 1; i >= 0; i--) {
-                ripples[i].radius += 8;
-                ripples[i].life -= 0.025;
+                ripples[i].radius += 7;
+                ripples[i].life -= 0.02;
                 if (ripples[i].life <= 0) ripples.splice(i, 1);
             }
 
             const oldX = lens.x;
             const oldY = lens.y;
 
-            const followSpeed = lens.isDragging ? 0.22 : 0.08;
+            const followSpeed = lens.isDragging ? 0.2 : 0.08;
             lens.x += (lens.targetX - lens.x) * followSpeed;
             lens.y += (lens.targetY - lens.y) * followSpeed;
 
             lens.velX = lens.x - oldX;
             lens.velY = lens.y - oldY;
 
-            const spring = 0.14;  
-            const friction = 0.85; 
+            const spring = 0.12;  
+            const friction = 0.88; 
 
-            let targetWobbleX = lens.velX * 1.8;
-            let targetWobbleY = lens.velY * 1.8;
+            let targetWobbleX = lens.velX * 1.5;
+            let targetWobbleY = lens.velY * 1.5;
 
             lens.wobbleX += (targetWobbleX - lens.wobbleX) * spring;
             lens.wobbleY += (targetWobbleY - lens.wobbleY) * spring;
@@ -342,10 +340,8 @@
             lens.wobbleX *= friction;
             lens.wobbleY *= friction;
 
-            // Transition between base radii for smoother shape changing
-            const shapeChangeSpeed = 0.1;
-            lens.radiusX += (lens.baseRadiusX + lens.wobbleX - Math.abs(lens.wobbleY * 0.4) - lens.radiusX) * shapeChangeSpeed;
-            lens.radiusY += (lens.baseRadiusY + lens.wobbleY - Math.abs(lens.wobbleX * 0.4) - lens.radiusY) * shapeChangeSpeed;
+            lens.radiusX = lens.baseRadiusX + lens.wobbleX - Math.abs(lens.wobbleY * 0.3);
+            lens.radiusY = lens.baseRadiusY + lens.wobbleY - Math.abs(lens.wobbleX * 0.3);
         }
 
         function getShapeDist(dx, dy, rx, ry) {
@@ -359,7 +355,7 @@
         }
 
         function applyRefraction() {
-            const margin = 100; 
+            const margin = 80; 
             const sw = Math.floor(lens.radiusX * 2 + margin * 2);
             const sh = Math.floor(lens.radiusY * 2 + margin * 2);
             
@@ -371,7 +367,10 @@
             const safeSW = Math.min(width - safeSX, sw);
             const safeSH = Math.min(height - safeSY, sh);
 
-            if (safeSW <= 0 || safeSH <= 0) return;
+            if (safeSW <= 0 || safeSH <= 0) {
+                drawLensHardware();
+                return;
+            }
 
             const imgData = ctx.getImageData(safeSX, safeSY, safeSW, safeSH);
             const src = imgData.data;
@@ -395,21 +394,22 @@
                         const pullFactor = Math.pow(distScore, lens.edgeDistortion);
                         const mag = 1.0 - (pullFactor * lens.refraction);
 
-                        let shockX = 0; shockY = 0;
+                        let shockX = 0;
+                        let shockY = 0;
                         ripples.forEach(r => {
                             const rdx = (x + safeSX) - r.x;
                             const rdy = (y + safeSY) - r.y;
                             const dist = Math.sqrt(rdx * rdx + rdy * rdy);
                             const diff = Math.abs(dist - r.radius);
                             if (diff < 50) {
-                                const strength = (1 - diff / 50) * r.life * 10;
+                                const strength = (1 - diff / 50) * r.life * 8;
                                 const angle = Math.atan2(rdy, rdx);
                                 shockX += Math.cos(angle) * strength;
                                 shockY += Math.sin(angle) * strength;
                             }
                         });
 
-                        const cOff = lens.chromatic / 150;
+                        const cOff = lens.chromatic / 200;
                         const channelOffsets = [1 + cOff, 1.0, 1 - cOff];
                         for (let c = 0; c < 3; c++) {
                             const smpX = Math.floor((cx + dx * mag * channelOffsets[c] + shockX) - offsetX);
@@ -417,27 +417,21 @@
 
                             if (smpX >= 0 && smpX < safeSW && smpY >= 0 && smpY < safeSH) {
                                 out[outIdx + c] = src[(smpY * safeSW + smpX) * 4 + c];
+                            } else {
+                                out[outIdx + c] = 0; 
                             }
                         }
 
-                        // Opacity and Edge Sheen
                         let alpha = 255;
-                        if (distScore > 0.94) alpha = 255 * (1 - (distScore - 0.94) / 0.06);
+                        if (distScore > 0.95) alpha = 255 * (1 - (distScore - 0.95) / 0.05);
                         out[outIdx + 3] = alpha;
                         
-                        // Edge Caustics (Glow at borders)
-                        const edgeGlow = Math.pow(distScore, 10) * 130;
-                        // Dynamic Sheen based on movement
-                        const sheenX = (dx / lens.radiusX) + (lens.velX * 0.05);
-                        const sheenY = (dy / lens.radiusY) + (lens.velY * 0.05);
-                        const sheen = Math.pow(Math.max(0, 1 - Math.sqrt(sheenX*sheenX + sheenY*sheenY)), 20) * 200;
-
-                        out[outIdx] = Math.min(255, out[outIdx] + edgeGlow + sheen);
-                        out[outIdx+1] = Math.min(255, out[outIdx+1] + edgeGlow + sheen);
-                        out[outIdx+2] = Math.min(255, out[outIdx+2] + edgeGlow + sheen);
+                        const glow = Math.pow(distScore, 8) * 110;
+                        out[outIdx] = Math.min(255, out[outIdx] + glow);
+                        out[outIdx+1] = Math.min(255, out[outIdx+1] + glow);
+                        out[outIdx+2] = Math.min(255, out[outIdx+2] + glow);
 
                     } else {
-                        // Background pixels (outside glass)
                         const sIdx = (y * safeSW + x) * 4;
                         out[outIdx] = src[sIdx];
                         out[outIdx+1] = src[sIdx+1];
@@ -447,38 +441,14 @@
                 }
             }
 
-            // Draw Lens Shadow before putting the glass back
-            drawShadow();
             ctx.putImageData(output, safeSX, safeSY);
             drawLensHardware();
         }
 
-        function drawShadow() {
-            ctx.save();
-            ctx.beginPath();
-            const shadowX = lens.x + (lens.velX * 0.5);
-            const shadowY = lens.y + (lens.velY * 0.5) + 20;
-            
-            if (currentShape === 'square') {
-                ctx.rect(shadowX - lens.radiusX, shadowY - lens.radiusY, lens.radiusX * 2, lens.radiusY * 2);
-            } else if (currentShape === 'diamond') {
-                ctx.moveTo(shadowX, shadowY - lens.radiusY);
-                ctx.lineTo(shadowX + lens.radiusX, shadowY);
-                ctx.lineTo(shadowX, shadowY + lens.radiusY);
-                ctx.lineTo(shadowX - lens.radiusX, shadowY);
-                ctx.closePath();
-            } else {
-                ctx.ellipse(shadowX, shadowY, lens.radiusX, lens.radiusY, 0, 0, Math.PI * 2);
-            }
-            
-            ctx.fillStyle = "rgba(0,0,0,0.4)";
-            ctx.filter = "blur(30px)";
-            ctx.fill();
-            ctx.restore();
-        }
-
         function drawLensHardware() {
             ctx.save();
+            ctx.lineWidth = 2.5;
+            
             ctx.beginPath();
             if (currentShape === 'square') {
                 ctx.rect(lens.x - lens.radiusX, lens.y - lens.radiusY, lens.radiusX * 2, lens.radiusY * 2);
@@ -492,22 +462,17 @@
                 ctx.ellipse(lens.x, lens.y, lens.radiusX, lens.radiusY, 0, 0, Math.PI * 2);
             }
             
-            // Premium bezel
-            const edgeGrad = ctx.createLinearGradient(lens.x - lens.radiusX, lens.y - lens.radiusY, lens.x + lens.radiusX, lens.y + lens.radiusY);
-            edgeGrad.addColorStop(0, "rgba(255, 255, 255, 0.4)");
-            edgeGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.05)");
+            const edgeGrad = ctx.createRadialGradient(lens.x, lens.y, Math.min(lens.radiusX, lens.radiusY) * 0.9, lens.x, lens.y, Math.max(lens.radiusX, lens.radiusY));
+            edgeGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
             edgeGrad.addColorStop(1, "rgba(255, 255, 255, 0.2)");
-            
             ctx.strokeStyle = edgeGrad;
-            ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Internal Highlight (Top-left shine)
             const shine = ctx.createRadialGradient(
-                lens.x - lens.radiusX * 0.4, lens.y - lens.radiusY * 0.4, 5,
-                lens.x - lens.radiusX * 0.4, lens.y - lens.radiusY * 0.4, lens.radiusX * 0.8
+                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, 5,
+                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, lens.radiusX * 0.6
             );
-            shine.addColorStop(0, "rgba(255, 255, 255, 0.12)");
+            shine.addColorStop(0, "rgba(255, 255, 255, 0.1)");
             shine.addColorStop(1, "rgba(255, 255, 255, 0)");
             ctx.fillStyle = shine;
             ctx.fill();
@@ -535,7 +500,7 @@
             const dy = p.y - lens.y;
             const dist = getShapeDist(dx, dy, lens.radiusX, lens.radiusY);
             
-            if (dist < 1.1) {
+            if (dist < 1.2) {
                 lens.isDragging = true;
                 lens.targetX = p.x;
                 lens.targetY = p.y;
@@ -573,7 +538,6 @@
         window.addEventListener('touchmove', handleMove);
         window.addEventListener('touchend', () => lens.isDragging = false);
         window.addEventListener('resize', resize);
-
         window.onload = init;
     </script>
 </body>

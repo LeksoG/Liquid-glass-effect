@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+In this code there is a black thing covering the words fix it its shown in the image: <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -27,7 +27,6 @@
             display: block;
         }
 
-        /* Navigation Tabs */
         .nav-container {
             position: fixed;
             top: 25px;
@@ -61,7 +60,6 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
         }
 
-        /* Shapes Selector Sub-menu */
         #shape-selector {
             position: fixed;
             top: 80px;
@@ -121,7 +119,7 @@
         <div id="opt-diamond" class="shape-opt" onclick="setLensShape('diamond')">Diamond</div>
     </div>
 
-    <div class="ui-label">Drag with 1 finger // Pinch apart to split // Bring together to join</div>
+    <div class="ui-label">Pinch to stretch & wobble // Bring together to merge</div>
 
     <div id="canvas-container">
         <canvas id="glassCanvas"></canvas>
@@ -134,8 +132,8 @@
         let width, height;
         let activeTab = 'glass';
         let currentShape = 'oval'; 
+        let isPinching = false;
 
-        // Support for multiple lenses
         let lenses = [
             {
                 id: Math.random(),
@@ -148,23 +146,21 @@
                 radiusX: 175,
                 radiusY: 115,
                 isDragging: false,
-                touchId: null, // For single touch drag
                 velX: 0,
                 velY: 0,
                 wobbleX: 0,
                 wobbleY: 0,
-                shockWobbleX: 0,
-                shockWobbleY: 0,
                 refraction: 0.45,       
                 edgeDistortion: 3.5,   
                 chromatic: 1.5,
-                stretchScale: 1 // For visual stretching effect
+                rotation: 0,
+                stretchFactor: 1,
+                stretchVel: 0, // Velocity for stretch wobble
+                surfaceTension: 0
             }
         ];
 
-        let ripples = [];
-        let lastRipplePos = { x: 0, y: 0 };
-        const words = ["LIQUID", "STRETCH", "GLASS"];
+        const words = ["LIQUID", "WOBBLE", "GLASS"];
         
         const appIcons = [
             { char: '✉', bg: ['#1e90ff', '#00bfff'], label: 'Mail' },
@@ -189,7 +185,6 @@
             activeTab = tab;
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tab-' + tab).classList.add('active');
-            
             const selector = document.getElementById('shape-selector');
             selector.style.display = (tab === 'shapes') ? 'flex' : 'none';
         }
@@ -202,17 +197,13 @@
 
             lenses.forEach(lens => {
                 if (shape === 'circle') {
-                    lens.baseRadiusX = 135;
-                    lens.baseRadiusY = 135;
+                    lens.baseRadiusX = 135; lens.baseRadiusY = 135;
                 } else if (shape === 'square') {
-                    lens.baseRadiusX = 130;
-                    lens.baseRadiusY = 130;
+                    lens.baseRadiusX = 130; lens.baseRadiusY = 130;
                 } else if (shape === 'diamond') {
-                    lens.baseRadiusX = 150;
-                    lens.baseRadiusY = 150;
+                    lens.baseRadiusX = 150; lens.baseRadiusY = 150;
                 } else {
-                    lens.baseRadiusX = 175;
-                    lens.baseRadiusY = 115;
+                    lens.baseRadiusX = 175; lens.baseRadiusY = 115;
                 }
             });
         }
@@ -228,7 +219,6 @@
         function drawBackground() {
             ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, width, height);
-
             ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
             ctx.lineWidth = 1;
             const gridSize = 80;
@@ -238,54 +228,41 @@
             for(let i = 0; i < height; i += gridSize) {
                 ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
             }
-
-            if (activeTab === 'icons') {
-                drawIconsLayer();
-            } else {
-                drawTextLayer();
-            }
+            if (activeTab === 'icons') drawIconsLayer();
+            else drawTextLayer();
         }
 
         function drawTextLayer() {
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
-            
             const fontSize = Math.min(width * 0.18, 90); 
-            const lineSpacing = fontSize * 1.1;
             ctx.font = `bold ${fontSize}px 'Space Grotesk'`;
-            
-            const totalHeight = (words.length - 1) * lineSpacing;
-            const startY = (height / 2) - (totalHeight / 2);
-
+            const startY = (height / 2) - (fontSize * 1.1);
             words.forEach((word, idx) => {
-                const wordY = startY + (idx * lineSpacing);
-                const totalWordWidth = ctx.measureText(word).width;
-                const startX = (width / 2) - (totalWordWidth / 2);
-
-                for (let i = 0; i < word.length; i++) {
-                    const char = word[i];
-                    const charX = startX + ctx.measureText(word.substring(0, i)).width + ctx.measureText(char).width/2;
-                    
-                    let charOffX = 0;
-                    let charOffY = 0;
-
-                    ripples.forEach(r => {
-                        const rdx = charX - r.x;
-                        const rdy = wordY - r.y;
-                        const dist = Math.sqrt(rdx * rdx + rdy * rdy);
-                        const diff = Math.abs(dist - r.radius);
-                        if (diff < 80) {
-                            const strength = (1 - diff / 80) * r.life * 25;
-                            const angle = Math.atan2(rdy, rdx);
-                            charOffX += Math.cos(angle) * strength;
-                            charOffY += Math.sin(angle) * strength;
-                        }
-                    });
-
-                    ctx.fillText(char, charX + charOffX, wordY + charOffY);
-                }
+                ctx.fillText(word, width/2, startY + (idx * fontSize * 1.1));
             });
+        }
+
+        function drawIconsLayer() {
+            const iconSize = Math.min(width * 0.15, 70);
+            const cornerRadius = iconSize * 0.25;
+            const cols = 4, rows = 3;
+            const hGap = width / (cols + 1), vGap = height / (rows + 1);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const iconIdx = r * cols + c;
+                    if (iconIdx >= appIcons.length) continue;
+                    const iconData = appIcons[iconIdx];
+                    const centerX = hGap * (c + 1), centerY = vGap * (r + 1);
+                    drawRoundedRect(centerX - iconSize/2, centerY - iconSize/2, iconSize, cornerRadius, iconData.bg);
+                    ctx.fillStyle = iconData.bg[0].toLowerCase() === '#ffffff' ? '#000' : '#fff';
+                    ctx.font = `${iconSize * 0.45}px 'Arial'`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(iconData.char, centerX, centerY);
+                }
+            }
         }
 
         function drawRoundedRect(x, y, size, radius, colors) {
@@ -293,7 +270,6 @@
             const grad = ctx.createLinearGradient(x, y, x, y + size);
             grad.addColorStop(0, colors[0]);
             grad.addColorStop(1, colors[1]);
-            
             ctx.beginPath();
             ctx.moveTo(x + radius, y);
             ctx.lineTo(x + size - radius, y);
@@ -305,273 +281,195 @@
             ctx.lineTo(x, y + radius);
             ctx.quadraticCurveTo(x, y, x + radius, y);
             ctx.closePath();
-            
             ctx.fillStyle = grad;
             ctx.fill();
             ctx.restore();
         }
 
-        function drawIconsLayer() {
-            const iconSize = Math.min(width * 0.15, 70);
-            const cornerRadius = iconSize * 0.25;
-            const cols = 4;
-            const rows = 3;
-            
-            const hGap = width / (cols + 1);
-            const vGap = height / (rows + 1);
-
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const iconIdx = r * cols + c;
-                    if (iconIdx >= appIcons.length) continue;
-
-                    const iconData = appIcons[iconIdx];
-                    const centerX = hGap * (c + 1);
-                    const centerY = vGap * (r + 1);
-                    
-                    let iconOffX = 0;
-                    let iconOffY = 0;
-
-                    ripples.forEach(rip => {
-                        const rdx = centerX - rip.x;
-                        const rdy = centerY - rip.y;
-                        const dist = Math.sqrt(rdx * rdx + rdy * rdy);
-                        const diff = Math.abs(dist - rip.radius);
-                        if (diff < 80) {
-                            const strength = (1 - diff / 80) * rip.life * 20;
-                            const angle = Math.atan2(rdy, rdx);
-                            iconOffX += Math.cos(angle) * strength;
-                            iconOffY += Math.sin(angle) * strength;
-                        }
-                    });
-                    
-                    drawRoundedRect(centerX - iconSize/2 + iconOffX, centerY - iconSize/2 + iconOffY, iconSize, cornerRadius, iconData.bg);
-                    
-                    ctx.fillStyle = iconData.bg[0].toLowerCase() === '#ffffff' ? '#000' : '#fff';
-                    ctx.font = `${iconSize * 0.45}px 'Arial'`;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(iconData.char, centerX + iconOffX, centerY + iconOffY);
-                    
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-                    ctx.font = `${iconSize * 0.15}px 'Space Grotesk'`;
-                    ctx.fillText(iconData.label, centerX + iconOffX, centerY + iconSize/2 + 15 + iconOffY);
-                }
-            }
-        }
-
         function updatePhysics() {
-            // Ripple update
-            for (let i = ripples.length - 1; i >= 0; i--) {
-                ripples[i].radius += 7;
-                ripples[i].life -= 0.015;
-                if (ripples[i].life <= 0) ripples.splice(i, 1);
-            }
-
-            // Lens joining logic (Liquid effect)
+            // Magnetic Joining Logic
             if (lenses.length > 1) {
-                const l1 = lenses[0];
-                const l2 = lenses[1];
-                const dx = l1.x - l2.x;
-                const dy = l1.y - l2.y;
+                const l1 = lenses[0], l2 = lenses[1];
+                const dx = l1.x - l2.x, dy = l1.y - l2.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
-                const joinThreshold = 180;
-
+                
+                // Visible stretching as they get closer
+                const joinThreshold = 450;
                 if (dist < joinThreshold) {
-                    // Snap together if very close
-                    if (dist < 40) {
-                        const midX = (l1.x + l2.x) / 2;
-                        const midY = (l1.y + l2.y) / 2;
+                    const tensionIntensity = (1 - dist/joinThreshold);
+                    l1.surfaceTension = tensionIntensity;
+                    l2.surfaceTension = tensionIntensity;
+
+                    if (dist < 100 && !isPinching) {
+                        const midX = (l1.x + l2.x) / 2, midY = (l1.y + l2.y) / 2;
                         lenses = [{
-                            ...l1,
-                            x: midX, y: midY, targetX: midX, targetY: midY,
-                            baseRadiusX: 175, baseRadiusY: 115
+                            ...l1, x: midX, y: midY, targetX: midX, targetY: midY,
+                            stretchFactor: 1, stretchVel: 0, surfaceTension: 0
                         }];
-                    } else {
-                        // Magnetic pull
-                        const force = (joinThreshold - dist) * 0.02;
-                        const angle = Math.atan2(dy, dx);
-                        l1.x -= Math.cos(angle) * force;
-                        l1.y -= Math.sin(angle) * force;
-                        l2.x += Math.cos(angle) * force;
-                        l2.y += Math.sin(angle) * force;
+                        setLensShape(currentShape);
+                    } else if (!isPinching) {
+                        // Gentle magnetic pull
+                        const pull = tensionIntensity * 0.05;
+                        l1.targetX -= dx * pull; l1.targetY -= dy * pull;
+                        l2.targetX += dx * pull; l2.targetY += dy * pull;
                     }
+                } else {
+                    l1.surfaceTension *= 0.8; l2.surfaceTension *= 0.8;
                 }
             }
 
             lenses.forEach(lens => {
-                const oldX = lens.x;
-                const oldY = lens.y;
-
-                const followSpeed = lens.isDragging ? 0.2 : 0.08;
+                const oldX = lens.x, oldY = lens.y;
+                const followSpeed = lens.isDragging || isPinching ? 0.25 : 0.08;
                 lens.x += (lens.targetX - lens.x) * followSpeed;
                 lens.y += (lens.targetY - lens.y) * followSpeed;
+                lens.velX = lens.x - oldX; lens.velY = lens.y - oldY;
 
-                lens.velX = lens.x - oldX;
-                lens.velY = lens.y - oldY;
+                // Wobble on movement
+                lens.wobbleX += (lens.velX * 1.5 - lens.wobbleX) * 0.15;
+                lens.wobbleY += (lens.velY * 1.5 - lens.wobbleY) * 0.15;
+                lens.wobbleX *= 0.85; lens.wobbleY *= 0.85;
 
-                const spring = 0.12;  
-                const friction = 0.88; 
+                // Spring Physics for Stretch Wobble
+                if (!isPinching) {
+                    const springK = 0.12;
+                    const damping = 0.85;
+                    const force = (1 - lens.stretchFactor) * springK;
+                    lens.stretchVel = (lens.stretchVel + force) * damping;
+                    lens.stretchFactor += lens.stretchVel;
+                }
 
-                let targetWobbleX = lens.velX * 1.5;
-                let targetWobbleY = lens.velY * 1.5;
-
-                let totalShockX = 0;
-                let totalShockY = 0;
-                ripples.forEach(r => {
-                    const rdx = lens.x - r.x;
-                    const rdy = lens.y - r.y;
-                    const dist = Math.sqrt(rdx * rdx + rdy * rdy);
-                    const diff = Math.abs(dist - r.radius);
-                    if (diff < 100) {
-                        const strength = (1 - diff / 100) * r.life * 15;
-                        totalShockX += Math.sign(rdx) * strength;
-                        totalShockY += Math.sign(rdy) * strength;
-                    }
-                });
-
-                lens.shockWobbleX += (totalShockX - lens.shockWobbleX) * 0.1;
-                lens.shockWobbleY += (totalShockY - lens.shockWobbleY) * 0.1;
-                lens.shockWobbleX *= 0.92;
-                lens.shockWobbleY *= 0.92;
-
-                lens.wobbleX += (targetWobbleX - lens.wobbleX) * spring;
-                lens.wobbleY += (targetWobbleY - lens.wobbleY) * spring;
-                
-                lens.wobbleX *= friction;
-                lens.wobbleY *= friction;
-
-                // Stretch logic for split
-                lens.radiusX = (lens.baseRadiusX + lens.wobbleX + Math.abs(lens.shockWobbleX) - Math.abs(lens.wobbleY * 0.3));
-                lens.radiusY = (lens.baseRadiusY + lens.wobbleY + Math.abs(lens.shockWobbleY) - Math.abs(lens.wobbleX * 0.3));
+                // Apply geometry
+                lens.radiusX = (lens.baseRadiusX + lens.wobbleX) * lens.stretchFactor;
+                lens.radiusY = (lens.baseRadiusY + lens.wobbleY) / (Math.max(0.5, lens.stretchFactor * 0.7 + 0.3));
             });
         }
 
-        function getShapeDist(dx, dy, rx, ry, shape) {
-            if (shape === 'square') {
-                return Math.max(Math.abs(dx / rx), Math.abs(dy / ry));
-            } else if (shape === 'diamond') {
-                return Math.abs(dx / rx) + Math.abs(dy / ry);
-            } else {
-                return Math.sqrt((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry));
+        // Field warping for "sticky" effect
+        function getWarpedDist(px, py, lens, otherLens) {
+            let dx = px - lens.x;
+            let dy = py - lens.y;
+
+            if (lens.rotation !== 0) {
+                const s = Math.sin(-lens.rotation), c = Math.cos(-lens.rotation);
+                const nx = dx * c - dy * s, ny = dx * s + dy * c;
+                dx = nx; dy = ny;
             }
+
+            // Enhanced Surface Tension Warping
+            if (otherLens && lens.surfaceTension > 0.01) {
+                const tox = otherLens.x - lens.x, toy = otherLens.y - lens.y;
+                const distToOther = Math.sqrt(tox*tox + toy*toy);
+                
+                // Vector toward the neighbor
+                const angleToOther = Math.atan2(toy, tox) - lens.rotation;
+                const angleOfPixel = Math.atan2(dy, dx);
+                const similarity = Math.cos(angleOfPixel - angleToOther);
+                
+                if (similarity > 0) {
+                    // Pull the surface toward the other lens using a bell curve
+                    const influence = Math.pow(similarity, 4); // Tight focus towards neighbor
+                    const warpAmount = lens.surfaceTension * 100 * influence;
+                    dx -= Math.cos(angleToOther) * warpAmount;
+                    dy -= Math.sin(angleToOther) * warpAmount;
+                }
+            }
+
+            if (currentShape === 'square') return Math.max(Math.abs(dx / lens.radiusX), Math.abs(dy / lens.radiusY));
+            if (currentShape === 'diamond') return Math.abs(dx / lens.radiusX) + Math.abs(dy / lens.radiusY);
+            return Math.sqrt((dx * dx) / (lens.radiusX * lens.radiusX) + (dy * dy) / (lens.radiusY * lens.radiusY));
         }
 
         function applyRefraction() {
-            // Apply refraction for each lens independently
-            lenses.forEach(lens => {
-                const margin = 80; 
-                const sw = Math.floor(lens.radiusX * 2 + margin * 2);
-                const sh = Math.floor(lens.radiusY * 2 + margin * 2);
-                let sx = Math.floor(lens.x - lens.radiusX - margin);
-                let sy = Math.floor(lens.y - lens.radiusY - margin);
-                const safeSX = Math.max(0, sx);
-                const safeSY = Math.max(0, sy);
-                const safeSW = Math.min(width - safeSX, sw);
-                const safeSH = Math.min(height - safeSY, sh);
+            lenses.forEach((lens, idx) => {
+                const otherLens = lenses.length > 1 ? lenses[1 - idx] : null;
+                const margin = 150; 
+                const sw = Math.floor(lens.radiusX * 3.0 + margin), sh = Math.floor(lens.radiusY * 3.0 + margin);
+                let sx = Math.floor(lens.x - sw/2), sy = Math.floor(lens.y - sh/2);
+                const safeSX = Math.max(0, sx), safeSY = Math.max(0, sy);
+                const safeSW = Math.min(width - safeSX, sw), safeSH = Math.min(height - safeSY, sh);
 
-                if (safeSW <= 0 || safeSH <= 0) {
-                    drawLensHardware(lens);
-                    return;
-                }
+                if (safeSW <= 0 || safeSH <= 0) return;
 
                 const imgData = ctx.getImageData(safeSX, safeSY, safeSW, safeSH);
-                const src = imgData.data;
-                const output = ctx.createImageData(safeSW, safeSH);
-                const out = output.data;
-                const offsetX = safeSX - sx;
-                const offsetY = safeSY - sy;
-                const cx = sw / 2;
-                const cy = sh / 2;
+                const src = imgData.data, output = ctx.createImageData(safeSW, safeSH), out = output.data;
 
                 for (let y = 0; y < safeSH; y++) {
                     for (let x = 0; x < safeSW; x++) {
-                        const dx = x + offsetX - cx;
-                        const dy = y + offsetY - cy;
-                        const distScore = getShapeDist(dx, dy, lens.radiusX, lens.radiusY, currentShape);
+                        const px = x + safeSX, py = y + safeSY;
+                        const distScore = getWarpedDist(px, py, lens, otherLens);
                         const outIdx = (y * safeSW + x) * 4;
 
                         if (distScore < 1.0) {
-                            const pullFactor = Math.pow(distScore, lens.edgeDistortion);
-                            const mag = 1.0 - (pullFactor * lens.refraction);
-                            let shockX = 0;
-                            let shockY = 0;
-                            ripples.forEach(r => {
-                                const rdx = (x + safeSX) - r.x;
-                                const rdy = (y + safeSY) - r.y;
-                                const dist = Math.sqrt(rdx * rdx + rdy * rdy);
-                                const diff = Math.abs(dist - r.radius);
-                                if (diff < 50) {
-                                    const strength = (1 - diff / 50) * r.life * 8;
-                                    const angle = Math.atan2(rdy, rdx);
-                                    shockX += Math.cos(angle) * strength;
-                                    shockY += Math.sin(angle) * strength;
-                                }
-                            });
-
+                            const mag = 1.0 - (Math.pow(distScore, lens.edgeDistortion) * lens.refraction);
                             const cOff = lens.chromatic / 200;
-                            const channelOffsets = [1 + cOff, 1.0, 1 - cOff];
-                            for (let c = 0; c < 3; c++) {
-                                const smpX = Math.floor((cx + dx * mag * channelOffsets[c] + shockX) - offsetX);
-                                const smpY = Math.floor((cy + dy * mag * channelOffsets[c] + shockY) - offsetY);
-                                if (smpX >= 0 && smpX < safeSW && smpY >= 0 && smpY < safeSH) {
-                                    out[outIdx + c] = src[(smpY * safeSW + smpX) * 4 + c];
-                                } else {
-                                    out[outIdx + c] = 0; 
+                            
+                            const cx = x + safeSX, cy = y + safeSY;
+                            const sample = (off) => {
+                                const sx_target = Math.floor(lens.x + (cx - lens.x) * mag * off);
+                                const sy_target = Math.floor(lens.y + (cy - lens.y) * mag * off);
+                                if (sx_target >= 0 && sx_target < width && sy_target >= 0 && sy_target < height) {
+                                    const sidx = (Math.floor(sy_target - safeSY) * safeSW + Math.floor(sx_target - safeSX)) * 4;
+                                    return sidx >= 0 && sidx < src.length ? src[sidx] : 0;
                                 }
-                            }
+                                return 0;
+                            };
 
+                            out[outIdx] = sample(1 + cOff);
+                            out[outIdx+1] = sample(1.0);
+                            out[outIdx+2] = sample(1 - cOff);
+                            
                             let alpha = 255;
-                            if (distScore > 0.95) alpha = 255 * (1 - (distScore - 0.95) / 0.05);
-                            out[outIdx + 3] = Math.max(out[outIdx+3], alpha);
-                            const glow = Math.pow(distScore, 8) * 110;
+                            if (distScore > 0.92) alpha = 255 * (1 - (distScore - 0.92) / 0.08);
+                            out[outIdx + 3] = alpha;
+
+                            // Highlights
+                            const glow = Math.pow(distScore, 10) * 120;
                             out[outIdx] = Math.min(255, out[outIdx] + glow);
                             out[outIdx+1] = Math.min(255, out[outIdx+1] + glow);
                             out[outIdx+2] = Math.min(255, out[outIdx+2] + glow);
                         } else {
-                            const sIdx = (y * safeSW + x) * 4;
-                            out[outIdx] = src[sIdx];
-                            out[outIdx+1] = src[sIdx+1];
-                            out[outIdx+2] = src[sIdx+2];
-                            out[outIdx+3] = src[sIdx+3];
+                            out[outIdx] = src[outIdx];
+                            out[outIdx+1] = src[outIdx+1];
+                            out[outIdx+2] = src[outIdx+2];
+                            out[outIdx+3] = 0; // Background area is handled by the initial drawBackground
                         }
                     }
                 }
                 ctx.putImageData(output, safeSX, safeSY);
-                drawLensHardware(lens);
+                drawLensHardware(lens, otherLens);
             });
         }
 
-        function drawLensHardware(lens) {
+        function drawLensHardware(lens, otherLens) {
             ctx.save();
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            if (currentShape === 'square') {
-                ctx.rect(lens.x - lens.radiusX, lens.y - lens.radiusY, lens.radiusX * 2, lens.radiusY * 2);
-            } else if (currentShape === 'diamond') {
-                ctx.moveTo(lens.x, lens.y - lens.radiusY);
-                ctx.lineTo(lens.x + lens.radiusX, lens.y);
-                ctx.lineTo(lens.x, lens.y + lens.radiusY);
-                ctx.lineTo(lens.x - lens.radiusX, lens.y);
-                ctx.closePath();
-            } else {
-                ctx.ellipse(lens.x, lens.y, lens.radiusX, lens.radiusY, 0, 0, Math.PI * 2);
-            }
+            ctx.translate(lens.x, lens.y);
+            ctx.rotate(lens.rotation);
+            ctx.lineWidth = 2;
             
-            const edgeGrad = ctx.createRadialGradient(lens.x, lens.y, Math.min(lens.radiusX, lens.radiusY) * 0.9, lens.x, lens.y, Math.max(lens.radiusX, lens.radiusY));
+            ctx.beginPath();
+            const segments = 100;
+            for(let i = 0; i <= segments; i++) {
+                const a = (i / segments) * Math.PI * 2;
+                let r = Math.max(lens.radiusX, lens.radiusY);
+                // Binary-ish search for warped boundary
+                for(let step = 0; step < 6; step++) {
+                    const tx = Math.cos(a) * r, ty = Math.sin(a) * r;
+                    const s = Math.sin(lens.rotation), c = Math.cos(lens.rotation);
+                    const wx = tx * c - ty * s + lens.x, wy = tx * s + ty * c + lens.y;
+                    const d = getWarpedDist(wx, wy, lens, otherLens);
+                    r /= (d + 0.0001);
+                }
+                if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+                else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            
+            const edgeGrad = ctx.createRadialGradient(0, 0, Math.min(lens.radiusX, lens.radiusY) * 0.8, 0, 0, Math.max(lens.radiusX, lens.radiusY) * 1.2);
             edgeGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
-            edgeGrad.addColorStop(1, "rgba(255, 255, 255, 0.2)");
+            edgeGrad.addColorStop(1, "rgba(255, 255, 255, 0.15)");
             ctx.strokeStyle = edgeGrad;
             ctx.stroke();
-
-            const shine = ctx.createRadialGradient(
-                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, 5,
-                lens.x - lens.radiusX * 0.3, lens.y - lens.radiusY * 0.3, lens.radiusX * 0.6
-            );
-            shine.addColorStop(0, "rgba(255, 255, 255, 0.1)");
-            shine.addColorStop(1, "rgba(255, 255, 255, 0)");
-            ctx.fillStyle = shine;
-            ctx.fill();
             ctx.restore();
         }
 
@@ -582,112 +480,54 @@
             requestAnimationFrame(animate);
         }
 
-        function spawnRipple(x, y) {
-            ripples.push({ x: x, y: y, radius: 0, life: 1.0 });
-            lastRipplePos = { x, y };
-        }
-
-        // Multi-touch handling
         function handleTouches(e) {
             if (e.target.closest('.nav-container') || e.target.closest('#shape-selector')) return;
             e.preventDefault();
-
-            const activeTouches = e.touches;
-
-            // Reset dragging states for all lenses first
-            lenses.forEach(l => l.isDragging = false);
-
-            if (activeTouches.length === 1) {
-                // Single touch drag or ripple
-                const t = activeTouches[0];
-                const p = { x: t.clientX, y: t.clientY };
-                
-                let foundLens = false;
+            const touches = e.touches;
+            
+            if (touches.length === 1) {
+                isPinching = false;
+                const t = touches[0], p = { x: t.clientX, y: t.clientY };
                 lenses.forEach(l => {
-                    const dist = getShapeDist(p.x - l.x, p.y - l.y, l.radiusX, l.radiusY, currentShape);
-                    if (dist < 1.3) {
-                        l.isDragging = true;
-                        l.touchId = t.identifier;
-                        l.targetX = p.x;
-                        l.targetY = p.y;
-                        foundLens = true;
+                    if (getWarpedDist(p.x, p.y, l, null) < 1.3) {
+                        l.isDragging = true; l.targetX = p.x; l.targetY = p.y;
                     }
                 });
-
-                if (!foundLens && e.type === 'touchstart') {
-                    spawnRipple(p.x, p.y);
-                } else if (!foundLens && e.type === 'touchmove') {
-                    const dist = Math.sqrt(Math.pow(p.x - lastRipplePos.x, 2) + Math.pow(p.y - lastRipplePos.y, 2));
-                    if (dist > 60) spawnRipple(p.x, p.y);
-                }
-
-            } else if (activeTouches.length >= 2) {
-                // Handle split/multi-drag
-                const t1 = activeTouches[0];
-                const t2 = activeTouches[1];
-                const p1 = { x: t1.clientX, y: t1.clientY };
-                const p2 = { x: t2.clientX, y: t2.clientY };
+            } else if (touches.length >= 2) {
+                isPinching = true;
+                const t1 = touches[0], t2 = touches[1];
+                const p1 = { x: t1.clientX, y: t1.clientY }, p2 = { x: t2.clientX, y: t2.clientY };
+                const touchDist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
                 if (lenses.length === 1) {
                     const l = lenses[0];
-                    const distToCenter1 = getShapeDist(p1.x - l.x, p1.y - l.y, l.radiusX, l.radiusY, currentShape);
-                    const distToCenter2 = getShapeDist(p2.x - l.x, p2.y - l.y, l.radiusX, l.radiusY, currentShape);
+                    l.targetX = (p1.x + p2.x)/2; l.targetY = (p1.y + p2.y)/2;
+                    l.rotation = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    l.stretchFactor = Math.max(1, touchDist / 180);
 
-                    // If both fingers are on the single glass, calculate stretch
-                    if (distToCenter1 < 1.5 && distToCenter2 < 1.5) {
-                        const touchDist = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-                        
-                        // Liquid Stretching Visual
-                        l.targetX = (p1.x + p2.x) / 2;
-                        l.targetY = (p1.y + p2.y) / 2;
-                        
-                        // SNAP/SPLIT CONDITION
-                        if (touchDist > 450) {
-                            const l1 = {...l, id: Math.random(), touchId: t1.identifier, isDragging: true, targetX: p1.x, targetY: p1.y, baseRadiusX: 110, baseRadiusY: 110};
-                            const l2 = {...l, id: Math.random(), touchId: t2.identifier, isDragging: true, targetX: p2.x, targetY: p2.y, baseRadiusX: 110, baseRadiusY: 110};
-                            lenses = [l1, l2];
-                        } else {
-                            // Apply physical stretch to radii
-                            l.baseRadiusX = 175 + (touchDist * 0.1);
-                        }
+                    if (touchDist > 550) {
+                        const l1 = {...l, id: Math.random(), rotation: 0, stretchFactor: 1, stretchVel: 0, x: p1.x, y: p1.y, targetX: p1.x, targetY: p1.y};
+                        const l2 = {...l, id: Math.random(), rotation: 0, stretchFactor: 1, stretchVel: 0, x: p2.x, y: p2.y, targetX: p2.x, targetY: p2.y};
+                        lenses = [l1, l2];
+                        setLensShape(currentShape);
                     }
                 } else {
-                    // Two lenses, two fingers: Drag each lens with a finger
-                    [t1, t2].forEach(t => {
-                        const p = { x: t.clientX, y: t.clientY };
-                        lenses.forEach(l => {
-                            const dist = getShapeDist(p.x - l.x, p.y - l.y, l.radiusX, l.radiusY, currentShape);
-                            if (dist < 1.5) {
-                                l.isDragging = true;
-                                l.targetX = p.x;
-                                l.targetY = p.y;
-                            }
-                        });
-                    });
+                    lenses[0].targetX = p1.x; lenses[0].targetY = p1.y;
+                    lenses[1].targetX = p2.x; lenses[1].targetY = p2.y;
+                    lenses[0].rotation = 0; lenses[1].rotation = 0;
+                    lenses[0].stretchFactor = 1; lenses[1].stretchFactor = 1;
                 }
             }
         }
 
-        // Mouse Fallback
         function handleMouse(e) {
             const p = { x: e.clientX, y: e.clientY };
             if (e.type === 'mousedown') {
-                if (p.y < 130) return;
-                let found = false;
                 lenses.forEach(l => {
-                    if (getShapeDist(p.x - l.x, p.y - l.y, l.radiusX, l.radiusY, currentShape) < 1.2) {
-                        l.isDragging = true;
-                        found = true;
-                    }
+                    if (getWarpedDist(p.x, p.y, l, null) < 1.2) l.isDragging = true;
                 });
-                if (!found) spawnRipple(p.x, p.y);
             } else if (e.type === 'mousemove') {
-                lenses.forEach(l => {
-                    if (l.isDragging) {
-                        l.targetX = p.x;
-                        l.targetY = p.y;
-                    }
-                });
+                lenses.forEach(l => { if (l.isDragging) { l.targetX = p.x; l.targetY = p.y; } });
             } else if (e.type === 'mouseup') {
                 lenses.forEach(l => l.isDragging = false);
             }
@@ -696,11 +536,12 @@
         window.addEventListener('mousedown', handleMouse);
         window.addEventListener('mousemove', handleMouse);
         window.addEventListener('mouseup', handleMouse);
-        
         window.addEventListener('touchstart', handleTouches, { passive: false });
         window.addEventListener('touchmove', handleTouches, { passive: false });
-        window.addEventListener('touchend', handleTouches, { passive: false });
-        
+        window.addEventListener('touchend', () => { 
+            lenses.forEach(l => l.isDragging = false); 
+            isPinching = false; 
+        }, { passive: false });
         window.addEventListener('resize', resize);
         window.onload = init;
     </script>
